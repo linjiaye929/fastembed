@@ -190,8 +190,10 @@ class StaticTextEmbedding(TextEmbeddingBase):
     def _token_ids(self, documents: list[str]) -> tuple[NDArray[np.int64], NDArray[np.int64]]:
         """Tokenize a batch into one flat id array plus the number of ids of each document."""
         assert self.tokenizer is not None
-        # encode_batch_fast skips the character offsets, which are not needed here.
-        encodings = self.tokenizer.encode_batch_fast(documents, add_special_tokens=False)
+        # encode_batch_fast skips unused character offsets, but older supported tokenizers
+        # versions only provide encode_batch.
+        encode_batch = getattr(self.tokenizer, "encode_batch_fast", self.tokenizer.encode_batch)
+        encodings = encode_batch(documents, add_special_tokens=False)
         id_lists = [encoding.ids for encoding in encodings]
         lengths = np.fromiter(map(len, id_lists), dtype=np.int64, count=len(documents))
         ids = np.fromiter(
